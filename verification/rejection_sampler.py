@@ -4,7 +4,7 @@ class RejectionSampler:
         self.target_model=target_model
         self.draft_model=draft_model
         
-    def handle_token(self,accepted_tokens,temp_target_kv_cache,last_committed_token: torch.Tensor,):
+    def handle(self,accepted_tokens,temp_target_kv_cache,last_committed_token: torch.Tensor,):
         
         if accepted_tokens > 0:
             self.target_model.kv_cache = self._slice_kv_cache(
