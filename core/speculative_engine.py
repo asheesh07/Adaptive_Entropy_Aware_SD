@@ -122,6 +122,19 @@ class SpeculativeEngine:
                 acceptance_rate=self.acceptance_tracker.value,
             )
             self.k_history.append(k)
+            if k == 0:
+                logits = self.target_model.forward_next(
+                    output_ids[:, -1:]
+                )
+                next_token = torch.argmax(logits, dim=-1, keepdim=True)
+
+                output_ids = torch.cat([output_ids, next_token], dim=1)
+
+                self.performance_tracker.record_target_forward(1)
+                self.performance_tracker.record_tokens(1)
+
+                continue
+            
 
             # ----------------------------------------------
             # 3. Draft generation (blind execution)
