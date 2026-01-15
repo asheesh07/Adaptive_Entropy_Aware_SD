@@ -16,7 +16,7 @@ class DraftGenerationLoop:
 
         for _ in range(k):
             logits = self.draft_model.forward_next(
-                self.draft_model.last_token
+                tokens[-1] if tokens else None
             )
             token = self.draft_model.sample_token(logits)
             tokens.append(token)
