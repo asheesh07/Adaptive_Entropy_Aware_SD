@@ -1,7 +1,7 @@
 import torch
 class EntropyCalculator:
     @torch.no_grad()
-    def compute(logits):
+    def compute(logits: torch.Tensor) -> torch.Tensor:
         
         log_probs = torch.log_softmax(logits, dim=-1)
         probs= torch.exp(log_probs)
