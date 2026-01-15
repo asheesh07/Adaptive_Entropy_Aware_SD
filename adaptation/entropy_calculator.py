@@ -8,4 +8,4 @@ class EntropyCalculator:
         entropy = -(probs * torch.log(probs + 1e-9)).sum(dim=-1)
         entropy = torch.nan_to_num(entropy, nan=float("inf"), posinf=float("inf"))
 
-        return entropy.item()
+        return entropy
