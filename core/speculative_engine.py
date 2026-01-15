@@ -180,15 +180,14 @@ class SpeculativeEngine:
             # ----------------------------------------------
             if accepted < k:
                 next_token = self.rejection_sampler.handle(
-                    accepted_tokens=accepted,
-                    temp_target_kv_cache=temp_target_kv,
-                )
+                accepted_tokens=accepted,
+                temp_target_kv_cache=temp_target_kv,
+                last_committed_token=output_ids[:, -1:],
+            )
 
-                output_ids = torch.cat(
-                    [output_ids, next_token], dim=1
-                )
-
+                output_ids = torch.cat([output_ids, next_token], dim=1)
                 self.performance_tracker.record_tokens(1)
+
 
             # ----------------------------------------------
             # 7. Prepare next-step draft logits
