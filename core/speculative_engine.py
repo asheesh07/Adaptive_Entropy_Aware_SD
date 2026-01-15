@@ -27,6 +27,8 @@ class SpeculativeEngine:
         max_k: int,
         entropy_bins,
         k_values,
+        acceptance_alpha=0.1,
+        acceptance_init=1.0,
     ):
         # -------------------------------
         # Models
@@ -38,7 +40,7 @@ class SpeculativeEngine:
         # Control & Adaptation
         # -------------------------------
         self.entropy_calculator = EntropyCalculator()
-        self.acceptance_tracker = AcceptanceTracker()
+        self.acceptance_tracker = AcceptanceTracker(acceptance_alpha, acceptance_init)
 
         self.k_controller = KController(
             entropy_bins=entropy_bins,

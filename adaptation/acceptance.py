@@ -1,9 +1,9 @@
 class AcceptanceTracker:
-    def __init__(self,alpha,initial_values):
+    def __init__(self, alpha: float = 0.1, initial_value: float = 1.0):
         self.alpha=alpha
-        self.value=initial_values
-        
-    def update(self,accepted_tokens,k):
+        self.value=initial_value
+
+    def update(self, accepted_tokens, k):
         if k<=0:
             return self.value
         acceptance_rate= accepted_tokens / k
