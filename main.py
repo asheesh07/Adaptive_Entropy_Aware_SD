@@ -12,12 +12,12 @@ def main():
     # Load models
     # ----------------------------
     draft_model = DraftModel(
-        model_name="TheBloke/Mistral-7B-Instruct-v0.2-GGUF",
+        model_name="mistralai/Mistral-7B-Instruct-v0.2",
         device=device,
     )
 
     target_model = TargetModel(
-        model_name="TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF",
+        model_name="mistralai/Mixtral-8x7B-Instruct-v0.1",
         device=device,
     )
 
