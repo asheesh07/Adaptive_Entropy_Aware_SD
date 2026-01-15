@@ -164,7 +164,7 @@ class SpeculativeEngine:
                 )
 
                 self.target_model.kv_cache = CacheManager.commit_prefix(
-                    temp_target_kv, accepted
+                    temp_target_kv, accepted_tokens
                 )
                 self.target_model.position += accepted
 
