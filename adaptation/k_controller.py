@@ -8,19 +8,21 @@ class KController:
         self.acceptance_max = acceptance_max
         
     def entropy_to_k(self,entropy):
-        for threshold,k in zip(self.entropy_threshold,self.k_values):
+        for i,threshold in enumerate(self.entropy_threshold):
             if entropy < threshold:
-                return k
+                return self.k_values[i]
         return self.k_values[-1]
     
-    def _acceptance_feedback(self,k,acceptance_rate):
+    def _acceptance_feedback(self,k,acceptance_rate=None):
+        if acceptance_rate is None:
+            return k
         if acceptance_rate < self.acceptance_min:
             k=max(0,k//2)
-        elif acceptance_rate > self.acceptance_max:
+        elif acceptance_rate is not None and acceptance_rate > self.acceptance_max:
             k=min(self.k_max,k+1)
         return k
     
-    def decide__k(self,entropy,acceptance_rate=None):
+    def decide_k(self,entropy,acceptance_rate=None):
         k=self.entropy_to_k(entropy)
         k=self._acceptance_feedback(k,acceptance_rate)
         
