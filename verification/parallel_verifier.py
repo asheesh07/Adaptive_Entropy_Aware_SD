@@ -3,6 +3,9 @@ class ParallelVerifier:
         self.target_model=target_model
         
     def verify(self,draft_tokens):
+        k= draft_tokens.shape[1]
+        if k ==0:
+            return 0,self.target_model.kv_cache
         outputs =self.target_model.model(input_ids=draft_tokens.to(self.target_model.device), past_key_values=self.target_model.kv_cache, use_cache=True,return_dict=True)
         logits= outputs.logits
         new_kv_cache= outputs.past_key_values
