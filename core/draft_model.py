@@ -17,6 +17,7 @@ class DraftModel:
         
         self.kv_cache=None
         self.device = device
+
         self.dtype = dtype
     @torch.no_grad()    
     def init_kv_cache(self,input_ids):
