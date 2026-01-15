@@ -38,7 +38,7 @@ class TargetModel:
         accepted_tokens = 0
         
         for i in range(draft_tokens.shape[1]):
-            target_token= self.sample_token(target_logits[:,i,:])
+            target_token= self.select_tokens(target_logits[:,i,:])
             if target_token.item() == draft_tokens[0,i].item():
                 accepted_tokens +=1
             else:
