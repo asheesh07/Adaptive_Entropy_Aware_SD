@@ -18,7 +18,7 @@ class KController:
             return k
         if acceptance_rate < self.acceptance_min:
             k=max(0,k//2)
-        elif acceptance_rate is not None and acceptance_rate > self.acceptance_max:
+        elif self.acceptance_max is not None and acceptance_rate > self.acceptance_max:
             k=min(self.k_max,k+1)
         return k
     
