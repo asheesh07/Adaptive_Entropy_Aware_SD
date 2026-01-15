@@ -12,12 +12,12 @@ def main():
     # Load models
     # ----------------------------
     draft_model = DraftModel(
-        model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        model_name="mistralai/Mistral-7B-Instruct-v0.2",
         device=device,
     )
 
     target_model = TargetModel(
-        model_name="meta-llama/Llama-2-7b-hf",
+        model_name="mistralai/Mixtral-8x7B-Instruct-v0.1",
         device=device,
     )
 
