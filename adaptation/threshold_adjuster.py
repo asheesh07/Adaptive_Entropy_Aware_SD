@@ -1,7 +1,25 @@
 class ThresholdAdjuster:
-    def __init__(self,entropy_bins,min_val,max_val,adjustment_rate,target_acceptance):
+    def __init__(self,entropy_bins,min_scale: float = 0.7,
+        max_scale: float = 1.3,
+        adjust_rate: float = 0.05,
+        target_acceptance: float = 0.75,):
         self.entropy_bins=entropy_bins
-        self.min_val=min_val
-        self.max_val=max_val
-        self.adjustment_rate=adjustment_rate
+        self.min_scale=min_scale
+        self.max_scale=max_scale
+        self.adjust_rate=adjust_rate
         self.target_acceptance=target_acceptance
+    def update(self, acceptance_rate: float):
+        """
+        Adjust entropy thresholds based on acceptance feedback.
+        """
+        # Positive if acceptance is better than target
+        error = acceptance_rate - self.target_acceptance
+
+        # Compute scaling factor
+        scale = 1.0 + self.adjust_rate * error
+        scale = max(self.min_scale, min(scale, self.max_scale))
+
+        # Apply scaling
+        self.entropy_bins = [b * scale for b in self.entropy_bins]
+
+        return self.entropy_bins
