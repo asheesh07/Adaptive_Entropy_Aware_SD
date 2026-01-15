@@ -30,6 +30,8 @@ def main():
         max_k=8,
         entropy_bins=[1.2, 2.2, 3.0],
         k_values=[8, 4, 2, 0],
+        acceptance_alpha=0.1,
+        acceptance_init=1.0,
     )
 
     # ----------------------------

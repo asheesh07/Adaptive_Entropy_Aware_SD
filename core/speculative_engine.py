@@ -43,10 +43,11 @@ class SpeculativeEngine:
         self.acceptance_tracker = AcceptanceTracker(acceptance_alpha, acceptance_init)
 
         self.k_controller = KController(
-            entropy_bins=entropy_bins,
-            k_values=k_values,
-            k_max=max_k,
-        )
+    entropy_threshold=entropy_bins,
+    k_values=k_values,
+    k_max=max_k,
+)
+
 
         self.threshold_adjuster = ThresholdAdjuster(entropy_bins)
 
