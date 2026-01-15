@@ -1,0 +1,188 @@
+import torch
+
+from adaptation.entropy_calculator import EntropyCalculator
+from adaptation.k_controller import KController
+from adaptation.acceptance import AcceptanceTracker
+from adaptation.threshold_adjuster import ThresholdAdjuster
+
+from core.draft_generation_loop import DraftGenerationLoop
+from verification.parallel_verifier import ParallelVerifier
+from verification.rejection_sampler import RejectionSampler
+from optimization.cache_manager import CacheManager
+
+from metrics.performance_tracker import PerformanceTracker
+from metrics.quality_evaluator import QualityEvaluator
+
+
+class SpeculativeEngine:
+    """
+    Top-level orchestration engine for Adaptive Entropy-Aware
+    Speculative Decoding.
+    """
+
+    def __init__(
+        self,
+        draft_model,
+        target_model,
+        max_k: int,
+        entropy_bins,
+        k_values,
+    ):
+        # -------------------------------
+        # Models
+        # -------------------------------
+        self.draft_model = draft_model
+        self.target_model = target_model
+
+        # -------------------------------
+        # Control & Adaptation
+        # -------------------------------
+        self.entropy_calculator = EntropyCalculator()
+        self.acceptance_tracker = AcceptanceTracker()
+
+        self.k_controller = KController(
+            entropy_bins=entropy_bins,
+            k_values=k_values,
+            k_max=max_k,
+        )
+
+        self.threshold_adjuster = ThresholdAdjuster(entropy_bins)
+
+        # -------------------------------
+        # Execution Modules
+        # -------------------------------
+        self.draft_generator = DraftGenerationLoop(self.draft_model)
+        self.verifier = ParallelVerifier(self.target_model)
+        self.rejection_sampler = RejectionSampler(
+            target_model=self.target_model,
+            draft_model=self.draft_model,
+        )
+
+        # -------------------------------
+        # Metrics
+        # -------------------------------
+        self.performance_tracker = PerformanceTracker()
+        self.quality_evaluator = QualityEvaluator()
+
+        # -------------------------------
+        # Debug / analysis hooks
+        # -------------------------------
+        self.k_history = []
+        self.acceptance_log = []
+
+    # ======================================================
+    # Main decode loop
+    # ======================================================
+
+    @torch.no_grad()
+    def decode(self, input_ids: torch.Tensor, max_tokens: int):
+        """
+        Run speculative decoding.
+
+        Args:
+            input_ids: Tensor [1, T]
+            max_tokens: number of tokens to generate
+
+        Returns:
+            output_ids: Tensor [1, T + max_tokens]
+        """
+
+        # -------------------------------
+        # Initialization
+        # -------------------------------
+        self.performance_tracker.reset()
+        self.quality_evaluator.reset()
+
+        self.performance_tracker.start()
+
+        # Initialize both models with prompt
+        draft_logits = self.draft_model.init_kv_cache(input_ids)
+        self.target_model.init_kv_cache(input_ids)
+
+        output_ids = input_ids.clone()
+
+        # ==================================================
+        # Decoding loop
+        # ==================================================
+        for _ in range(max_tokens):
+
+            # ----------------------------------------------
+            # 1. Measure entropy (draft next-token logits)
+            # ----------------------------------------------
+            entropy = self.entropy_calculator.compute(draft_logits).item()
+
+            # ----------------------------------------------
+            # 2. Decide speculation depth k
+            # ----------------------------------------------
+            k = self.k_controller.decide_k(
+                entropy=entropy,
+                acceptance_rate=self.acceptance_tracker.value,
+            )
+            self.k_history.append(k)
+
+            # ----------------------------------------------
+            # 3. Draft generation (blind execution)
+            # ----------------------------------------------
+            draft_tokens = self.draft_generator.generate(k)
+
+            self.performance_tracker.record_draft_forward(k)
+
+            # ----------------------------------------------
+            # 4. Parallel verification (ONE target forward)
+            # ----------------------------------------------
+            accepted, temp_target_kv = self.verifier.verify(draft_tokens)
+            self.performance_tracker.record_target_forward(1)
+
+            self.acceptance_log.append((accepted, k))
+            self.quality_evaluator.record_step(k, accepted)
+            self.acceptance_tracker.update(accepted, k)
+
+            # ----------------------------------------------
+            # 5. Commit accepted prefix (if any)
+            # ----------------------------------------------
+            if accepted > 0:
+                accepted_tokens = draft_tokens[:, :accepted]
+
+                output_ids = torch.cat(
+                    [output_ids, accepted_tokens], dim=1
+                )
+
+                self.target_model.kv_cache = CacheManager.commit_prefix(
+                    temp_target_kv, accepted
+                )
+                self.target_model.position += accepted
+
+                self.draft_model.kv_cache = CacheManager.sync_caches(
+                    self.target_model.kv_cache
+                )
+                self.draft_model.position = self.target_model.position
+
+                self.performance_tracker.record_tokens(accepted)
+
+            # ----------------------------------------------
+            # 6. Handle rejection (if any)
+            # ----------------------------------------------
+            if accepted < k:
+                next_token = self.rejection_sampler.handle(
+                    accepted_tokens=accepted,
+                    temp_target_kv_cache=temp_target_kv,
+                )
+
+                output_ids = torch.cat(
+                    [output_ids, next_token], dim=1
+                )
+
+                self.performance_tracker.record_tokens(1)
+
+            # ----------------------------------------------
+            # 7. Prepare next-step draft logits
+            # ----------------------------------------------
+            draft_logits = self.draft_model.forward_next(
+                output_ids[:, -1:]
+            )
+
+        # ==================================================
+        # Finish
+        # ==================================================
+        self.performance_tracker.stop()
+        return output_ids
