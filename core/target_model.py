@@ -33,17 +33,10 @@ class TargetModel:
     def forward_next(self,draft_tokens):
         outputs=self.model(input_ids=draft_tokens.to(self.device), past_key_values=self.kv_cache, use_cache=True,return_dict=True)
         new_kv_cache= outputs.past_key_values
-        target_logits = outputs.logits
         
-        accepted_tokens = 0
-        
-        for i in range(draft_tokens.shape[1]):
-            target_token= self.select_tokens(target_logits[:,i,:])
-            if target_token.item() == draft_tokens[0,i].item():
-                accepted_tokens +=1
-            else:
-                break 
-        return accepted_tokens,new_kv_cache
+        self.kv_cache = new_kv_cache
+        self.position += 1
+        return outputs.logits[:, -1, :]
         
         
         
