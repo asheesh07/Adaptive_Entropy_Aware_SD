@@ -30,7 +30,7 @@ class TargetModel:
         self.position = input_ids.shape[1]
         return outputs.logits[:,-1,:]
 
-    def forward_verify(self,draft_tokens):
+    def forward_next(self,draft_tokens):
         outputs=self.model(input_ids=draft_tokens.to(self.device), past_key_values=self.kv_cache, use_cache=True,return_dict=True)
         new_kv_cache= outputs.past_key_values
         target_logits = outputs.logits
