@@ -139,7 +139,7 @@ class SpeculativeEngine:
             # ----------------------------------------------
             # 3. Draft generation (blind execution)
             # ----------------------------------------------
-            draft_tokens = self.draft_generator.generate(k)
+            draft_tokens = self.draft_generator.generate(k, output_ids[:, -1:])
 
             self.performance_tracker.record_draft_forward(k)
 
