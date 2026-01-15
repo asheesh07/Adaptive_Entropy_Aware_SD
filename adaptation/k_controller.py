@@ -1,5 +1,5 @@
 class KController:
-    def __init__(self,entropy_threshold,k_values,k_max,acceptance_min,acceptance_max):
+    def __init__(self,entropy_threshold,k_values,k_max,acceptance_min=0,acceptance_max=None):
         assert len(k_values) == len(entropy_threshold) + 1, "k_values should have one more element than entropy_threshold"
         self.entropy_threshold = entropy_threshold
         self.k_values = k_values
