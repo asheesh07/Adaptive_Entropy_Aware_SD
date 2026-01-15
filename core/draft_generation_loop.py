@@ -6,6 +6,12 @@ class DraftGenerationLoop:
 
     @torch.no_grad()
     def generate(self, k: int) -> torch.Tensor:
+        if k == 0:
+            return torch.empty(
+                (1, 0),
+                dtype=torch.long,
+                device=self.draft_model.device,
+            )
         tokens = []
 
         for _ in range(k):
