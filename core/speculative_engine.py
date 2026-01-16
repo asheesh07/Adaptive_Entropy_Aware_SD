@@ -99,6 +99,7 @@ class SpeculativeEngine:
         self.performance_tracker.start()
 
         # Initialize both models with prompt
+        self.draft_model.reset_kv_cache()
         draft_logits = self.draft_model.init_kv_cache(input_ids)
         self.target_model.init_kv_cache(input_ids)
 
@@ -168,10 +169,7 @@ class SpeculativeEngine:
                 )
                 self.target_model.position += accepted
 
-                self.draft_model.kv_cache = CacheManager.sync_cache(
-                    self.target_model.kv_cache
-                )
-                self.draft_model.position = self.target_model.position
+                
 
                 self.performance_tracker.record_tokens(accepted)
 
