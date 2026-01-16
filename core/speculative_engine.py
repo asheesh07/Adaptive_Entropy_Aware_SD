@@ -180,6 +180,8 @@ class SpeculativeEngine:
             # ----------------------------------------------
             if accepted < k:
                 next_token = self.rejection_sampler.handle(
+                accepted_tokens=accepted,
+                temp_target_kv_cache=temp_target_kv,
                 last_committed_token=output_ids[:, -1:],
             )
 
