@@ -31,6 +31,10 @@ class DraftModel:
         
     @torch.no_grad()
     def forward_next(self,input_ids):
+        if input_ids.shape[-1] != 1:
+            raise RuntimeError(
+            f"forward_next expects exactly 1 token, got {input_ids.shape}"
+        )
         input_ids = input_ids.to(self.device)
         outputs = self.model(input_ids=input_ids, past_key_values=self.kv_cache, use_cache=True,return_dict=True)
         self.kv_cache = outputs.past_key_values
