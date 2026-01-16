@@ -4,17 +4,24 @@ class RejectionSampler:
         self.target_model=target_model
         self.draft_model=draft_model
         
-    def handle(self,accepted_tokens,temp_target_kv_cache,last_committed_token: torch.Tensor,):
+    def handle(self,last_committed_token: torch.Tensor,):
         
-        if accepted_tokens > 0:
-            self.target_model.kv_cache = self._slice_kv_cache(
-                temp_target_kv_cache,
-                accepted_tokens,
-            )
-            self.target_model.position += accepted_tokens
+        outputs = self.target_model.model(
+            input_ids=last_committed_token.to(self.target_model.device),
+            past_key_values=self.target_model.kv_cache,
+            use_cache=True,
+            return_dict=True,
+        )
 
-        logits = self.target_model.forward_next(last_committed_token)
+        logits = outputs.logits[:, -1, :]
         next_token = torch.argmax(logits, dim=-1, keepdim=True)
+
+        self.target_model.kv_cache = outputs.past_key_values
+        self.target_model.position += 1
+
+        self.draft_model.kv_cache = self.target_model.kv_cache
+        self.draft_model.position = self.target_model.position
+
 
         return next_token
 
