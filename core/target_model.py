@@ -35,8 +35,10 @@ class TargetModel:
     @torch.no_grad()
     def forward_next(self, input_ids):
         from transformers.cache_utils import Cache
-        assert self.kv_cache is None or isinstance(self.kv_cache, Cache), \ 
-        f"CORRUPTED KV CACHE: {type(self.kv_cache)}"
+        assert (
+    self.kv_cache is None or isinstance(self.kv_cache, Cache)
+), f"CORRUPTED KV CACHE: {type(self.kv_cache)}"
+
 
         input_ids = input_ids.to(self.device)
 
