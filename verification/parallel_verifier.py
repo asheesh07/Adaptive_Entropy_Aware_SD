@@ -1,11 +1,12 @@
 import torch
+import torch.nn.functional as F
 class ParallelVerifier:
-    def __init__(self,target_model):
+    def __init__(self,target_model,max_rank =3):
         self.target_model=target_model
+        self.max_rank = max_rank
     
     @torch.no_grad()
     def verify(self,draft_tokens):
-        assert isinstance(draft_tokens, torch.Tensor)
         assert draft_tokens.dim() == 2 and draft_tokens.size(0) == 1
 
         k= draft_tokens.shape[1]
@@ -16,8 +17,11 @@ class ParallelVerifier:
         new_kv_cache= outputs.past_key_values
         accepted_tokens =0
         for i in range(draft_tokens.shape[1]):
-            target_token = torch.argmax(logits[:, i, :], dim=-1)
-            if target_token.item() == draft_tokens[0,i].item():
+            token_id = draft_tokens[0,i]
+            probs = F.softmax(logits[0, i], dim=-1)
+            topk = torch.topk(probs, self.max_rank).indices
+
+            if token_id in topk:
                 accepted_tokens += 1
             else:
                 break
