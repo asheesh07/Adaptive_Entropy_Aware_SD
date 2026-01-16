@@ -21,7 +21,7 @@ class RejectionSampler:
     def _slice_kv_cache(self, kv_cache, accepted_tokens):
         new_cache = []
         for k,v in kv_cache:
-            new_k = k[:, :, : , :accepted_tokens, :].contiguous()
-            new_v = v[:, :, : , :accepted_tokens, :].contiguous()
+            new_k = k[:, :, :accepted_tokens, :].contiguous()
+            new_v = v[:, :, :accepted_tokens, :].contiguous()
             new_cache.append((new_k, new_v))
         return tuple(new_cache)
