@@ -1,5 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.cache_utils import DynamicCache
+
 class DraftModel:
     def __init__(self,model_name:str,device="cpu",dtype:torch.dtype=torch.float16,temperature:float=0.7,top_p:float =0.9,top_k:int=20):
         self.tokenizer =AutoTokenizer.from_pretrained(model_name)
@@ -21,9 +23,10 @@ class DraftModel:
         self.dtype = dtype
     @torch.no_grad()    
     def init_kv_cache(self,input_ids):
+        cache = DynamicCache()
         input_ids = input_ids.to(self.device)
         
-        outputs = self.model(input_ids=input_ids, use_cache=True,return_dict=True)
+        outputs = self.model(input_ids=input_ids,past_key_values=cache, use_cache=True,return_dict=True)
         
         self.kv_cache = outputs.past_key_values
         self.position = input_ids.shape[1]
