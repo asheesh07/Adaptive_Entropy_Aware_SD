@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 class ParallelVerifier:
     def __init__(self, target_model, max_rank=3):
         self.target_model = target_model
