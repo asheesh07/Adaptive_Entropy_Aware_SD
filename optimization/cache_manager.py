@@ -19,7 +19,7 @@ class CacheManager:
     def rollback_kv_cache(kv_cache: KVCache, prefix_length) -> KVCache:
         return CacheManager.slice_kv_cache(kv_cache, prefix_length)
     
-    def sync_cache(self,source_cache: KVCache):
+    def sync_cache(source_cache: KVCache):
         new_cache = []
         for k,v in source_cache:
            
