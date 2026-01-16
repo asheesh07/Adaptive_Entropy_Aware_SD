@@ -112,13 +112,13 @@ class SpeculativeEngine:
             # ----------------------------------------------
             # 1. Measure entropy (draft next-token logits)
             # ----------------------------------------------
-            entropy = self.entropy_calculator.compute(draft_logits).item()
+            z = self.entropy_calculator.compute(draft_logits)
 
             # ----------------------------------------------
             # 2. Decide speculation depth k
             # ----------------------------------------------
             k = self.k_controller.decide_k(
-                entropy=entropy,
+                entropy=z,
                 acceptance_rate=self.acceptance_tracker.value,
             )
             self.k_history.append(k)
@@ -164,11 +164,11 @@ class SpeculativeEngine:
                 )
 
                 self.target_model.kv_cache = CacheManager.commit_prefix(
-                    temp_target_kv, accepted_tokens
+                    temp_target_kv, accepted
                 )
                 self.target_model.position += accepted
 
-                self.draft_model.kv_cache = CacheManager.sync_caches(
+                self.draft_model.kv_cache = CacheManager.sync_cache(
                     self.target_model.kv_cache
                 )
                 self.draft_model.position = self.target_model.position
