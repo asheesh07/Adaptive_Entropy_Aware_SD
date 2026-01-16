@@ -1,31 +1,26 @@
-from typing import Tuple, List
-import torch
+from transformers.cache_utils import Cache
 
-KVCache = Tuple[Tuple[torch.Tensor, torch.Tensor], ...]
 class CacheManager:
-    def slice_kv_cache(kv_cache: KVCache, prefix_length) -> KVCache:
-        new_cache = []
-        for k, v in kv_cache:
-            new_k = k[:, :, :prefix_length, :].contiguous()
-            new_v = v[:, :, :prefix_length, :].contiguous()
-            new_cache.append((new_k, new_v))
-        return tuple(new_cache)
+    """
+    DynamicCache-safe cache utilities.
+    Does NOT touch tensor internals.
+    """
+
     @staticmethod
-    def commit_prefix(temp_kv_cache: KVCache, accepted_tokens) -> KVCache:
-        if accepted_tokens<=0:
-            raise ValueError("accepted_tokens must be positive to commit prefix.")
-        return CacheManager.slice_kv_cache(temp_kv_cache, accepted_tokens)
+    def assert_valid(cache):
+        if cache is None:
+            return
+        assert isinstance(cache, Cache), (
+            f"Invalid cache type: {type(cache)}"
+        )
+
     @staticmethod
-    def rollback_kv_cache(kv_cache: KVCache, prefix_length) -> KVCache:
-        return CacheManager.slice_kv_cache(kv_cache, prefix_length)
-    
-    def sync_cache(source_cache: KVCache):
-        new_cache = []
-        for k,v in source_cache:
-           
-            new_cache.append((k.contiguous(), v.contiguous()))
-            
-        return tuple(new_cache)
-        
-            
-        
+    def commit(cache, n_tokens):
+        CacheManager.assert_valid(cache)
+        if n_tokens > 0:
+            cache.crop(n_tokens)
+        return cache
+
+    @staticmethod
+    def reset():
+        return None
