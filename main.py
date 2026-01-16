@@ -29,7 +29,7 @@ def main():
         target_model=target_model,
         max_k=3,
         entropy_bins = [-1.0, 0.0, 1.0],
-        k_values = [3, 2, 1, 0],
+        k_values = [3, 2, 1, 4],
         acceptance_alpha=0.1,
         acceptance_init=1.0,
     )
