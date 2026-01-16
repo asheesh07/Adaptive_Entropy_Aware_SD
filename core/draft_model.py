@@ -1,7 +1,7 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 class DraftModel:
-    def __init__(self,model_name:str,device="cpu",dtype:torch.dtype=torch.float16,temperature:float=1.0,top_p:float =1.0,top_k:int=0):
+    def __init__(self,model_name:str,device="cpu",dtype:torch.dtype=torch.float16,temperature:float=0.7,top_p:float =0.9,top_k:int=20):
         self.tokenizer =AutoTokenizer.from_pretrained(model_name)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
