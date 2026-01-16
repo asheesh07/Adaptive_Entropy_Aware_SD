@@ -32,16 +32,25 @@ class TargetModel:
         self.position = input_ids.shape[1]
         return outputs.logits[:,-1,:]
 
-    def forward_next(self,draft_tokens):
-        input_ids = draft_tokens.to(self.device)
+    @torch.no_grad()
+    def forward_next(self, input_ids):
+        input_ids = input_ids.to(self.device)
 
-        assert input_ids.shape[-1] == 1
-        outputs=self.model(input_ids=draft_tokens.to(self.device), past_key_values=self.kv_cache, use_cache=True,return_dict=True)
-        new_kv_cache= outputs.past_key_values
-        
-        self.kv_cache = new_kv_cache
+        assert input_ids.shape[-1] == 1, (
+            f"TargetModel.forward_next expects 1 token, got {input_ids.shape}"
+        )
+
+        outputs = self.model(
+            input_ids=input_ids,
+            past_key_values=self.kv_cache,
+            use_cache=True,
+            return_dict=True,
+        )
+
+        self.kv_cache = outputs.past_key_values
         self.position += 1
         return outputs.logits[:, -1, :]
+
         
         
         
@@ -75,15 +84,9 @@ class TargetModel:
 
     
     def rollback_kv_cache(self, prefix_length):
-    
-        new_cache = []
-        for layer_cache in self.kv_cache:
-            k, v = layer_cache
-            k = k[:, :, :prefix_length, :].contiguous()
-            v = v[:, :, :prefix_length, :].contiguous()
-            new_cache.append((k, v))
-
-        self.kv_cache = tuple(new_cache)
+        assert self.kv_cache is not None
+        self.kv_cache.crop(prefix_length)
         self.position = prefix_length
+
 
     
