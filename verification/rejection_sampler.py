@@ -6,12 +6,6 @@ class RejectionSampler:
         
     def handle(self,accepted_tokens,temp_target_kv_cache,last_committed_token: torch.Tensor,):
         
-        if accepted_tokens > 0:
-            self.target_model.kv_cache = self._slice_kv_cache(
-                temp_target_kv_cache,
-                accepted_tokens,
-            )
-            self.target_model.position += accepted_tokens
 
         logits = self.target_model.forward_next(last_committed_token)
         next_token = torch.argmax(logits, dim=-1, keepdim=True)
