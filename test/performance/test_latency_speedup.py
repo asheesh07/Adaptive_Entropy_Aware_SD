@@ -27,3 +27,4 @@ def test_latency_speedup(
         f"Expected speculative latency < vanilla latency "
         f"(spec={spec_latency}ms, vanilla={vanilla_latency}ms)"
     )
+    print("vanila_metric",vanilla_latency,vanilla_metrics,"spec_metrics",spec_latency,spec_metrics)
