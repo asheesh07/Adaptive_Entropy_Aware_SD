@@ -159,36 +159,21 @@ class SpeculativeEngine:
             # ----------------------------------------------
             if accepted > 0:
                 accepted_tokens = draft_tokens[:, :accepted]
-
-                output_ids = torch.cat(
-                    [output_ids, accepted_tokens], dim=1
-                )
-
+                output_ids = torch.cat([output_ids, accepted_tokens], dim=1)
                 self.target_model.kv_cache = temp_target_kv
                 self.target_model.rollback_kv_cache(output_ids.shape[1])
-
                 self.performance_tracker.record_tokens(accepted)
 
-            # ----------------------------------------------
-            # 6. Handle rejection (if any)
-            # ----------------------------------------------
             if accepted < k:
                 next_token = self.rejection_sampler.handle(
-                last_committed_token=output_ids[:, -1:],
-            )
-
+                    last_committed_token=output_ids[:, -1:],
+                )
                 output_ids = torch.cat([output_ids, next_token], dim=1)
                 self.performance_tracker.record_tokens(1)
-                self.draft_model.kv_cache.crop(len(self.draft_model.kv_cache) - (k - accepted))
+                self.draft_model.rollback_kv_cache(output_ids.shape[1])
 
-
-            # ----------------------------------------------
-            # 7. Prepare next-step draft logits
-            # ----------------------------------------------
-            draft_logits = self.draft_model.forward_next(
-                output_ids[:, -1:]
-            )
-
+            self.acceptance_tracker.update(accepted, k)
+            self.threshold_adjuster.update(self.acceptance_tracker.value)
         # ==================================================
         # Finish
         # ==================================================
