@@ -165,9 +165,9 @@ class SpeculativeEngine:
                 )
 
                 self.target_model.kv_cache = temp_target_kv
-                self.target_model.kv_cache.crop(accepted)
+                self.target_model.kv_cache.crop(output_ids.shape[1])
 
-                self.target_model.position += accepted
+                self.target_model.position = output_ids.shape[1]
 
                 
 
@@ -183,6 +183,7 @@ class SpeculativeEngine:
 
                 output_ids = torch.cat([output_ids, next_token], dim=1)
                 self.performance_tracker.record_tokens(1)
+                self.draft_model.kv_cache.crop(len(self.draft_model.kv_cache) - (k - accepted))
 
 
             # ----------------------------------------------
