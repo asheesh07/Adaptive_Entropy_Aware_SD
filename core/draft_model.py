@@ -74,7 +74,10 @@ class DraftModel:
         return torch.multinomial(probs, num_samples=1)
 
 
-    
+    def rollback_kv_cache(self, prefix_length):
+        self.kv_cache.crop(prefix_length)
+        self.position = prefix_length
+        
     def reset_kv_cache(self):
         self.kv_cache = None
         self.position = 0
