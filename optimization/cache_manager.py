@@ -1,11 +1,6 @@
 from transformers.cache_utils import Cache
 
 class CacheManager:
-    """
-    DynamicCache-safe cache utilities.
-    Does NOT touch tensor internals.
-    """
-
     @staticmethod
     def assert_valid(cache):
         if cache is None:

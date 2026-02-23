@@ -2,17 +2,10 @@ from collections import defaultdict
 
 
 class QualityEvaluator:
-    """
-    Tracks speculative decoding quality metrics.
-    Passive observer only.
-    """
 
     def __init__(self):
         self.reset()
 
-    # --------------------------------------------------
-    # Lifecycle
-    # --------------------------------------------------
 
     def reset(self):
         self.total_steps = 0
@@ -25,18 +18,9 @@ class QualityEvaluator:
         self.k_history = []
         self.acceptance_history = []
 
-    # --------------------------------------------------
-    # Recording
-    # --------------------------------------------------
 
     def record_step(self, k: int, accepted_tokens: int):
-        """
-        Record one speculative decoding step.
-
-        Args:
-            k: speculation depth used
-            accepted_tokens: number of tokens accepted
-        """
+        
         self.total_steps += 1
 
         self.total_draft_tokens += k
@@ -50,9 +34,7 @@ class QualityEvaluator:
         step_acceptance = accepted_tokens / k if k > 0 else 1.0
         self.acceptance_history.append(step_acceptance)
 
-    # --------------------------------------------------
-    # Derived metrics
-    # --------------------------------------------------
+    
 
     @property
     def acceptance_rate(self) -> float:
@@ -74,18 +56,13 @@ class QualityEvaluator:
 
     @property
     def wasted_speculation(self) -> float:
-        """
-        Fraction of speculative tokens that were rejected.
-        """
+        
         if self.total_draft_tokens == 0:
             return 0.0
         wasted = self.total_draft_tokens - self.total_accepted_tokens
         return wasted / self.total_draft_tokens
 
-    # --------------------------------------------------
-    # Reporting
-    # --------------------------------------------------
-
+    
     def summary(self) -> dict:
         return {
             "total_steps": self.total_steps,

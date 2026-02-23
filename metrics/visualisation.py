@@ -2,13 +2,6 @@ import matplotlib.pyplot as plt
 
 
 class MetricsVisualizer:
-    """
-    Visualization utilities for speculative decoding metrics.
-    """
-
-    # --------------------------------------------------
-    # Acceptance & k behavior
-    # --------------------------------------------------
 
     @staticmethod
     def plot_acceptance_over_time(acceptance_history):
@@ -34,10 +27,6 @@ class MetricsVisualizer:
         plt.tight_layout()
         plt.show()
 
-    # --------------------------------------------------
-    # Performance comparison
-    # --------------------------------------------------
-
     @staticmethod
     def plot_latency_comparison(spec_latency_ms, baseline_latency_ms):
         labels = ["Baseline", "Speculative"]
@@ -49,10 +38,6 @@ class MetricsVisualizer:
         plt.title("Latency Comparison")
         plt.tight_layout()
         plt.show()
-
-    # --------------------------------------------------
-    # Speculation efficiency
-    # --------------------------------------------------
 
     @staticmethod
     def plot_speculation_efficiency(accepted, wasted):

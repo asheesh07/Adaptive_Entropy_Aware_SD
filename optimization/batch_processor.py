@@ -3,25 +3,12 @@ import torch
 
 
 class BatchProcessor:
-    """
-    Handles safe batching of requests for model forward passes.
-    """
 
     def __init__(self, device):
         self.device = device
 
     def pad_sequences(self, sequences: List[torch.Tensor], pad_token_id: int):
-        """
-        Pads a list of token sequences to the same length.
-
-        Args:
-            sequences: List[Tensor [1, T_i]]
-            pad_token_id: int
-
-        Returns:
-            padded: Tensor [B, T_max]
-            attention_mask: Tensor [B, T_max]
-        """
+    
         max_len = max(seq.shape[1] for seq in sequences)
 
         padded = []
@@ -61,11 +48,7 @@ class BatchProcessor:
         past_key_values=None,
         use_cache: bool = True,
     ):
-        """
-        Runs a batched forward pass.
-
-        This function is intentionally thin.
-        """
+        
         return model(
             input_ids=input_ids,
             attention_mask=attention_mask,

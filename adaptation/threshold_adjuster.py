@@ -3,6 +3,8 @@ class ThresholdAdjuster:
         max_scale: float = 1.3,
         adjust_rate: float = 0.05,
         target_acceptance: float = 0.75,):
+        self.abs_min: float = 0.1,
+        self.abs_max: float = 10.0
         self.entropy_bins=entropy_bins
         self.min_scale=min_scale
         self.max_scale=max_scale
@@ -20,6 +22,7 @@ class ThresholdAdjuster:
         scale = max(self.min_scale, min(scale, self.max_scale))
 
         # Apply scaling
-        self.entropy_bins = [b * scale for b in self.entropy_bins]
+        self.entropy_bins = [max(self.abs_min, min(b * scale, self.abs_max)) 
+    for b in self.entropy_bins]
 
         return self.entropy_bins

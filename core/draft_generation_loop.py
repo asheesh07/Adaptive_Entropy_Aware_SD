@@ -22,5 +22,4 @@ class DraftGenerationLoop:
             tokens.append(next_token)
             current_token = next_token 
 
-        # 🔑 Convert list → tensor [1, k]
         return torch.cat(tokens, dim=1)
