@@ -14,11 +14,13 @@ def main():
     draft_model = DraftModel(
         model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
         device=device,
+        dtype=torch.float16,
     )
 
     target_model = TargetModel(
         model_name="meta-llama/Llama-2-7b-hf",
         device=device,
+        dtype=torch.float16,
     )
 
     # ----------------------------
@@ -27,11 +29,11 @@ def main():
     engine = SpeculativeEngine(
         draft_model=draft_model,
         target_model=target_model,
-        max_k=3,
+        max_k=4,
         entropy_bins = [0.5,1.5,2.5],
-        k_values = [3,2,1,0],
+        k_values = [4,3,2,1],
         acceptance_alpha=0.1,
-        acceptance_init=1.0,
+        acceptance_init=0.5,
     )
 
     # ----------------------------
