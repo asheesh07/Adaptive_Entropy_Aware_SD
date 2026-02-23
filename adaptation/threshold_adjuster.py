@@ -5,7 +5,7 @@ class ThresholdAdjuster:
         target_acceptance: float = 0.75,):
         self.abs_min: float = 0.1,
         self.abs_max: float = 10.0
-        self.entropy_bins = [float(b) for b in list(entropy_bins[0]) if isinstance(entropy_bins[0], (list, tuple))]
+        self.entropy_bins = [float(b) for b in entropy_bins]
         self.min_scale=min_scale
         self.max_scale=max_scale
         self.adjust_rate=adjust_rate
