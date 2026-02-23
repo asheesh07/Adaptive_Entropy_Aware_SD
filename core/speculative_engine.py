@@ -127,7 +127,7 @@ class SpeculativeEngine:
                 logits = self.target_model.forward_next(
                     output_ids[:, -1:]
                 )
-                next_token = torch.argmax(logits, dim=-1, keepdim=True)
+                next_token = self.target_model.select_tokens(logits) 
 
                 output_ids = torch.cat([output_ids, next_token], dim=1)
 
@@ -162,6 +162,7 @@ class SpeculativeEngine:
                 output_ids = torch.cat([output_ids, accepted_tokens], dim=1)
                 self.target_model.kv_cache = temp_target_kv
                 self.target_model.rollback_kv_cache(output_ids.shape[1])
+                self.draft_model.rollback_kv_cache(output_ids.shape[1])  # ADD THIS
                 self.performance_tracker.record_tokens(accepted)
 
             if accepted < k:
@@ -172,8 +173,8 @@ class SpeculativeEngine:
                 self.performance_tracker.record_tokens(1)
                 self.draft_model.rollback_kv_cache(output_ids.shape[1])
 
-            self.acceptance_tracker.update(accepted, k)
             self.threshold_adjuster.update(self.acceptance_tracker.value)
+            draft_logits = self.draft_model.forward_next(output_ids[:, -1:])
         # ==================================================
         # Finish
         # ==================================================
