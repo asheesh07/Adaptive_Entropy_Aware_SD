@@ -165,11 +165,7 @@ class SpeculativeEngine:
                 )
 
                 self.target_model.kv_cache = temp_target_kv
-                self.target_model.kv_cache.crop(output_ids.shape[1])
-
-                self.target_model.position = output_ids.shape[1]
-
-                
+                self.target_model.rollback_kv_cache(output_ids.shape[1])
 
                 self.performance_tracker.record_tokens(accepted)
 
