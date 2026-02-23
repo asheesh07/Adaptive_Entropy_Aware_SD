@@ -28,8 +28,8 @@ def main():
         draft_model=draft_model,
         target_model=target_model,
         max_k=3,
-        entropy_bins = [-1.0, 0.0, 1.0],
-        k_values = [3, 2, 1, 4],
+        entropy_bins = [0.5,1.5,2.5],
+        k_values = [3,2,1,0],
         acceptance_alpha=0.1,
         acceptance_init=1.0,
     )
