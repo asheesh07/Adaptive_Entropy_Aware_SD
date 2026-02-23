@@ -1,9 +1,12 @@
 import torch
 import torch.nn.functional as F
+import torch
+import torch.nn.functional as F
+from transformers.cache_utils import DynamicCache
+
 class ParallelVerifier:
-    def __init__(self, target_model, max_rank=3):
+    def __init__(self, target_model):
         self.target_model = target_model
-        self.max_rank = max_rank
 
     @torch.no_grad()
     def verify(self, draft_tokens):
@@ -13,28 +16,27 @@ class ParallelVerifier:
         if k == 0:
             return 0, self.target_model.kv_cache
 
+        position_before = self.target_model.position
+
         accepted = 0
 
-        # Save original cache pointer
-        original_cache = self.target_model.kv_cache
-
         for i in range(k):
-            token = draft_tokens[:, i:i+1]  # shape [1,1]
+            token = draft_tokens[:, i:i+1]
 
             logits = self.target_model.forward_next(token)
             probs = F.softmax(logits[0], dim=-1)
 
-            topk = torch.topk(probs, self.max_rank).indices
+            draft_token_id = token.item()
+            token_prob = probs[draft_token_id].item()
 
-            if token.item() in topk:
+            u = torch.rand(1).item()
+            if u < token_prob:
                 accepted += 1
             else:
                 break
 
-        # The cache now contains only the accepted prefix
         temp_cache = self.target_model.kv_cache
 
-        # Restore original cache (engine will decide what to commit)
-        self.target_model.kv_cache = original_cache
+        self.target_model.rollback_kv_cache(position_before)
 
         return accepted, temp_cache
