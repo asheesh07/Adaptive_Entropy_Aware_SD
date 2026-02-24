@@ -3,8 +3,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.cache_utils import DynamicCache
 
 class TargetModel:
-    def __init__(self,model_name:str,device:str="cpu",dtype:torch.dtype=torch.float16,temperature:float=1.0,top_p:float =1.0,top_k:int=0):
-        self.tokenizer =AutoTokenizer.from_pretrained(model_name)
+    def __init__(self,tokenizer,model_name:str,device:str="cpu",dtype:torch.dtype=torch.float16,temperature:float=1.0,top_p:float =1.0,top_k:int=0):
+        self.tokenizer = tokenizer
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
             
