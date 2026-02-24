@@ -3,7 +3,7 @@ import torch
 from core.speculative_engine import SpeculativeEngine
 from core.draft_model import DraftModel
 from core.target_model import TargetModel
-
+from transformers import AutoTokenizer
 
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -11,7 +11,7 @@ def main():
     # ----------------------------
     # Load models
     # ----------------------------
-    tokenizer = TargetModel.get_tokenizer("meta-llama/Llama-2-7b-hf")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
     draft_model = DraftModel(
         tokenizer=tokenizer,
         model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
@@ -30,7 +30,6 @@ def main():
     # Build speculative engine
     # ----------------------------
     engine = SpeculativeEngine(
-        tokenizer=tokenizer,
         draft_model=draft_model,
         target_model=target_model,
         max_k=4,
