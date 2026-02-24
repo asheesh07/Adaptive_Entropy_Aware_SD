@@ -30,6 +30,7 @@ def main():
     # Build speculative engine
     # ----------------------------
     engine = SpeculativeEngine(
+        tokenizer=tokenizer,
         draft_model=draft_model,
         target_model=target_model,
         max_k=4,

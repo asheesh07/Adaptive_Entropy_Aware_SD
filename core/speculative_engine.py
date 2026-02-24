@@ -124,13 +124,16 @@ class SpeculativeEngine:
             )
             self.k_history.append(k)
             if k == 0:
-                logits = self.target_model.forward_next(output_ids[:, -1:])
+                logits = self.target_model.forward_next(
+                    output_ids[:, -1:]
+                )
                 next_token = self.target_model.select_tokens(logits) 
+
                 output_ids = torch.cat([output_ids, next_token], dim=1)
-                draft_logits = self.draft_model.forward_next(output_ids[:, -1:])
 
                 self.performance_tracker.record_target_forward(1)
                 self.performance_tracker.record_tokens(1)
+
                 continue
             
 
