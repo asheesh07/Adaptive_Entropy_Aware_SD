@@ -1,13 +1,13 @@
 # Adaptive_Entropy_Aware_SD
 
-# ⚡ EAAD — Entropy-Adaptive Accelerated Decoding
+# ⚡ EAAD — Entropy Aware-Adaptive Speculative Decoding
 
 > LLM inference latency reduction via dynamic draft token selection based on token-level entropy
 
 **Up to 20-30% latency reduction** under low-entropy conditions on Kaggle P100 GPU  
 **Better output diversity** compared to standard autoregressive decoding
 
-[GitHub](#) · [Kaggle Notebook](#)
+[GitHub](https://github.com/asheesh07/Adaptive_Entropy_Aware_SD) 
 
 ---
 
