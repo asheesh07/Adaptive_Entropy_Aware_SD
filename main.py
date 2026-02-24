@@ -11,13 +11,16 @@ def main():
     # ----------------------------
     # Load models
     # ----------------------------
+    tokenizer = TargetModel.get_tokenizer("meta-llama/Llama-2-7b-hf")
     draft_model = DraftModel(
+        tokenizer=tokenizer,
         model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
         device=device,
         dtype=torch.float16,
     )
 
     target_model = TargetModel(
+        tokenizer=tokenizer,
         model_name="meta-llama/Llama-2-7b-hf",
         device=device,
         dtype=torch.float16,

@@ -88,7 +88,6 @@ class TargetModel:
 
         return torch.multinomial(probs, num_samples=1)
 
-    
     def rollback_kv_cache(self, prefix_length):
         assert self.kv_cache is not None
         self.kv_cache.crop(prefix_length)
