@@ -51,7 +51,7 @@ class SpeculativeEngine:
         self.k_history = []
         self.acceptance_log = []
 
-    # speculative_engine.py — decode() changes only
+    # speculative_engine.py — decode() only
 
     @torch.no_grad()
     def decode(self, input_ids: torch.Tensor, max_tokens: int):
@@ -81,16 +81,16 @@ class SpeculativeEngine:
                 logits = self.target_model.forward_next(output_ids[:, -1:])
                 next_token = self.target_model.select_tokens(logits)
                 output_ids = torch.cat([output_ids, next_token], dim=1)
-                draft_logits = self.draft_model.forward_next(next_token.to(self.draft_model.device))
+                draft_logits = self.draft_model.forward_next(
+                    next_token.to(self.draft_model.device)
+                )
                 self.performance_tracker.record_target_forward(1)
                 self.performance_tracker.record_tokens(1)
                 continue
 
-            # Draft k tokens
             draft_tokens = self.draft_generator.generate(k, output_ids[:, -1:])
             self.performance_tracker.record_draft_forward(k)
 
-            # Verify — verifier handles ALL cache updates internally
             n_accepted, next_token = self.verifier.verify(
                 input_ids=output_ids,
                 draft_tokens=draft_tokens,
@@ -101,24 +101,19 @@ class SpeculativeEngine:
             self.quality_evaluator.record_step(k, n_accepted)
             self.acceptance_tracker.update(n_accepted, k)
 
-            # Commit to output_ids
             if n_accepted > 0:
-                output_ids = torch.cat([output_ids, draft_tokens[:, :n_accepted], next_token], dim=1)
+                output_ids = torch.cat(
+                    [output_ids, draft_tokens[:, :n_accepted], next_token], dim=1
+                )
             else:
                 output_ids = torch.cat([output_ids, next_token], dim=1)
 
             self.performance_tracker.record_tokens(n_accepted + 1)
             self.threshold_adjuster.update(self.acceptance_tracker.value)
 
-            # ✅ Get draft logits for next entropy calculation
-            # Do NOT call forward_next here — verifier already synced draft cache
-            # Just peek at the distribution without advancing cache
-            draft_logits = self.draft_model.model(
-                input_ids=output_ids[:, -1:].to(self.draft_model.device),
-                past_key_values=self.draft_model.kv_cache,
-                use_cache=False,  # peek only, don't update cache
-                return_dict=True,
-            ).logits[:, -1, :]
+            draft_logits = self.draft_model.forward_next(
+                next_token.to(self.draft_model.device)
+            )
 
             if next_token.item() == self.draft_model.tokenizer.eos_token_id:
                 break
