@@ -1,42 +1,97 @@
 import torch
 import torch.nn.functional as F
-import torch
-import torch.nn.functional as F
 from transformers.cache_utils import DynamicCache
-
 class ParallelVerifier:
-    def __init__(self, target_model):
+    def __init__(self, target_model, draft_model, rejection_sampler, temperature: float = 1.0):
         self.target_model = target_model
+        self.draft_model = draft_model
+        self.rejection_sampler = rejection_sampler
+        self.temperature = temperature
 
     @torch.no_grad()
-    def verify(self, draft_tokens):
-        assert draft_tokens.dim() == 2 and draft_tokens.size(0) == 1
-
+    def verify(self, input_ids: torch.Tensor, draft_tokens: torch.Tensor):
         k = draft_tokens.shape[1]
+        seq_len = input_ids.shape[1]
+
         if k == 0:
-            return 0, self.target_model.kv_cache
+            logits = self.target_model.forward_next(input_ids[:, -1:])
+            next_token = self.rejection_sampler.handle_bonus(logits, self.temperature)
+            return 0, next_token
 
-        position_before = self.target_model.position
+        full_ids = torch.cat([input_ids, draft_tokens], dim=1).to(self.target_model.device)
 
-        accepted = 0
+        target_outputs = self.target_model.model(
+            input_ids=full_ids,
+            past_key_values=None,   
+            use_cache=False,        
+            return_dict=True,
+        )
+        target_logits = target_outputs.logits  
+
+        draft_full_ids = full_ids[:, :-1].to(self.draft_model.device)  
+
+        draft_outputs = self.draft_model.model(
+            input_ids=draft_full_ids,
+            past_key_values=None,   
+            use_cache=False,
+            return_dict=True,
+        )
+        draft_logits = draft_outputs.logits  
+
+        n_accepted = 0
+        next_token = None
 
         for i in range(k):
-            token = draft_tokens[:, i:i+1]
+            t_logits_i = target_logits[:, seq_len - 1 + i, :]  
+            d_logits_i = draft_logits[:, seq_len - 1 + i, :]   
 
-            logits = self.target_model.forward_next(token)
-            probs = F.softmax(logits[0], dim=-1)
+            t_probs = F.softmax(t_logits_i / max(self.temperature, 1e-5), dim=-1)
+            d_probs = F.softmax(d_logits_i / max(self.temperature, 1e-5), dim=-1)
 
-            draft_token_id = token.item()
-            token_prob = probs[draft_token_id].item()
+            draft_token_id = draft_tokens[0, i].item()
 
-            u = torch.rand(1).item()
-            if u < token_prob:
-                accepted += 1
+            p_target = t_probs[0, draft_token_id].item()
+            p_draft  = d_probs[0, draft_token_id].item()
+
+            acceptance_prob = min(1.0, p_target / (p_draft + 1e-8))
+
+            if torch.rand(1).item() < acceptance_prob:
+                n_accepted += 1
             else:
+                next_token = self.rejection_sampler.handle(
+                    target_logits=t_logits_i,
+                    draft_logits=d_logits_i,
+                    temperature=self.temperature,
+                )
                 break
 
-        temp_cache = self.target_model.kv_cache
+        if next_token is None:
+            bonus_logits = target_logits[:, seq_len - 1 + k, :]
+            next_token = self.rejection_sampler.handle_bonus(
+                target_logits=bonus_logits,
+                temperature=self.temperature,
+            )
+        committed_ids = torch.cat(
+            [input_ids, draft_tokens[:, :n_accepted], next_token], dim=1
+        ).to(self.target_model.device)
 
-        self.target_model.rollback_kv_cache(position_before)
+        self.target_model.kv_cache = DynamicCache()
+        target_commit_outputs = self.target_model.model(
+            input_ids=committed_ids,
+            past_key_values=self.target_model.kv_cache,
+            use_cache=True,
+            return_dict=True,
+        )
+        self.target_model.kv_cache = target_commit_outputs.past_key_values
+        self.target_model.position = committed_ids.shape[1]
+        self.draft_model.kv_cache = DynamicCache()
+        draft_commit_outputs = self.draft_model.model(
+            input_ids=committed_ids.to(self.draft_model.device),
+            past_key_values=self.draft_model.kv_cache,
+            use_cache=True,
+            return_dict=True,
+        )
+        self.draft_model.kv_cache = draft_commit_outputs.past_key_values
+        self.draft_model.position = committed_ids.shape[1]
 
-        return accepted, temp_cache
+        return n_accepted, next_token
