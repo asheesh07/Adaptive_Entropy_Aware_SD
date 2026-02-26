@@ -1,5 +1,3 @@
-# parallel_verifier.py — full file
-
 import torch
 import torch.nn.functional as F
 from transformers.cache_utils import DynamicCache
@@ -21,7 +19,7 @@ class ParallelVerifier:
             next_token = self.rejection_sampler.handle_bonus(logits, self.temperature)
             return 0, next_token
 
-        # ── Step 1: Verification forward passes (use_cache=False — cache untouched) ──
+        # ── Step 1: Verification — full recompute, cache untouched ──
         full_ids = torch.cat([input_ids, draft_tokens], dim=1)
 
         target_logits = self.target_model.model(
@@ -80,12 +78,12 @@ class ParallelVerifier:
                 temperature=self.temperature,
             )
 
-        # ── Step 4: Update caches with ONLY the committed delta ──
-        # Both caches are still at seq_len (use_cache=False didn't touch them)
-        # Append only committed tokens — O(n_accepted+1) not O(seq_len)
+        # ── Step 4: Delta cache update — O(k) not O(seq_len) ──
+        # Both caches still at seq_len (use_cache=False didn't touch them)
+        # draft cache also at seq_len (engine restored it before calling verify)
         committed_delta = torch.cat(
             [draft_tokens[:, :n_accepted], next_token], dim=1
-        )
+        )  # (1, n_accepted+1)
 
         target_delta = self.target_model.model(
             input_ids=committed_delta.to(self.target_model.device),
