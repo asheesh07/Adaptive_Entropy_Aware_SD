@@ -85,7 +85,7 @@ class ParallelVerifier:
         # Append only committed tokens — O(n_accepted+1) not O(seq_len)
         committed_delta = torch.cat(
             [draft_tokens[:, :n_accepted], next_token], dim=1
-        )  # shape: (1, n_accepted+1)
+        )
 
         target_delta = self.target_model.model(
             input_ids=committed_delta.to(self.target_model.device),
