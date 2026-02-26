@@ -99,7 +99,8 @@ class DraftModel:
             cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
             sorted_indices_to_remove = cumulative_probs > self.top_p
-            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1]
+            sorted_indices_to_remove = sorted_indices_to_remove.clone()
+            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
             sorted_indices_to_remove[..., 0] = False
 
             sorted_probs[sorted_indices_to_remove] = 0.0
