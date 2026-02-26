@@ -1,6 +1,8 @@
+# parallel_verifier.py — the working version, full recompute cache rebuild
 import torch
 import torch.nn.functional as F
-import copy
+from transformers.cache_utils import DynamicCache
+
 class ParallelVerifier:
     def __init__(self, target_model, draft_model, rejection_sampler, temperature: float = 1.0):
         self.target_model = target_model
@@ -18,26 +20,22 @@ class ParallelVerifier:
             next_token = self.rejection_sampler.handle_bonus(logits, self.temperature)
             return 0, next_token
 
-        # ── Step 1: Target — run ONLY k draft tokens using existing KV cache ──
-        # This is O(k) not O(seq_len) — the key to fast verification
-        target_out = self.target_model.model(
-            input_ids=draft_tokens.to(self.target_model.device),
-            past_key_values=copy.deepcopy(self.target_model.kv_cache),
-            use_cache=True,
-            return_dict=True,
-        )  
-        target_logits = target_out.logits 
+        full_ids = torch.cat([input_ids, draft_tokens], dim=1)
 
-        # ── Step 2: Draft — run ONLY k draft tokens using existing KV cache ──
-        draft_out = self.draft_model.model(
-            input_ids=draft_tokens.to(self.draft_model.device),
-            past_key_values=self.draft_model.kv_cache,
-            use_cache=True,
+        target_logits = self.target_model.model(
+            input_ids=full_ids.to(self.target_model.device),
+            past_key_values=None,
+            use_cache=False,
             return_dict=True,
-        )
-        draft_logits = draft_out.logits       # (1, k, vocab)
+        ).logits
 
-        # ── Step 3: Align vocab sizes ──
+        draft_logits = self.draft_model.model(
+            input_ids=full_ids[:, :-1].to(self.draft_model.device),
+            past_key_values=None,
+            use_cache=False,
+            return_dict=True,
+        ).logits
+
         t_vocab = target_logits.shape[-1]
         d_vocab = draft_logits.shape[-1]
         if d_vocab < t_vocab:
@@ -45,13 +43,12 @@ class ParallelVerifier:
         elif t_vocab < d_vocab:
             target_logits = F.pad(target_logits, (0, d_vocab - t_vocab), value=float('-inf'))
 
-        # ── Step 4: Acceptance loop — index i directly (not seq_len-1+i) ──
         n_accepted = 0
         next_token = None
 
         for i in range(k):
-            t_logits_i = target_logits[:, i, :]
-            d_logits_i = draft_logits[:, i, :]
+            t_logits_i = target_logits[:, seq_len - 1 + i, :]
+            d_logits_i = draft_logits[:, seq_len - 1 + i, :]
 
             t_probs = F.softmax(t_logits_i / max(self.temperature, 1e-5), dim=-1)
             d_probs = F.softmax(d_logits_i.to(t_logits_i.device) / max(self.temperature, 1e-5), dim=-1)
@@ -73,35 +70,34 @@ class ParallelVerifier:
                 break
 
         if next_token is None:
-            bonus_logits = target_logits[:, k - 1, :]
+            bonus_logits = target_logits[:, seq_len - 1 + k, :]
             next_token = self.rejection_sampler.handle_bonus(
                 target_logits=bonus_logits,
                 temperature=self.temperature,
             )
 
-        committed_len = seq_len + n_accepted + 1
-        committed_delta = torch.cat(
-            [draft_tokens[:, :n_accepted], next_token], dim=1
-        )
+        committed_ids = torch.cat(
+            [input_ids, draft_tokens[:, :n_accepted], next_token], dim=1
+        ).to(self.target_model.device)
 
-        target_delta = self.target_model.model(
-            input_ids=committed_delta.to(self.target_model.device),
+        self.target_model.kv_cache = DynamicCache()
+        target_commit = self.target_model.model(
+            input_ids=committed_ids,
             past_key_values=self.target_model.kv_cache,
             use_cache=True,
             return_dict=True,
         )
-        self.target_model.kv_cache = target_delta.past_key_values
-        self.target_model.position = committed_len
+        self.target_model.kv_cache = target_commit.past_key_values
+        self.target_model.position = committed_ids.shape[1]
 
-        self.draft_model.kv_cache.crop(seq_len)
-        self.draft_model.position = seq_len
-        draft_delta = self.draft_model.model(
-            input_ids=committed_delta.to(self.draft_model.device),
+        self.draft_model.kv_cache = DynamicCache()
+        draft_commit = self.draft_model.model(
+            input_ids=committed_ids.to(self.draft_model.device),
             past_key_values=self.draft_model.kv_cache,
             use_cache=True,
             return_dict=True,
         )
-        self.draft_model.kv_cache = draft_delta.past_key_values
-        self.draft_model.position = committed_len
+        self.draft_model.kv_cache = draft_commit.past_key_values
+        self.draft_model.position = committed_ids.shape[1]
 
         return n_accepted, next_token
