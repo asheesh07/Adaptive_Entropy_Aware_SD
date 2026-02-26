@@ -1,5 +1,5 @@
 import torch
-
+import copy
 from adaptation.entropy_calculator import EntropyCalculator
 from adaptation.k_controller import KController
 from adaptation.acceptance import AcceptanceTracker
@@ -87,8 +87,13 @@ class SpeculativeEngine:
                 self.performance_tracker.record_target_forward(1)
                 self.performance_tracker.record_tokens(1)
                 continue
+            
+            draft_cache_saved = copy.deepcopy(self.draft_model.kv_cache)
+            draft_position_saved = self.draft_model.position
 
             draft_tokens = self.draft_generator.generate(k, output_ids[:, -1:])
+            self.draft_model.kv_cache = draft_cache_saved
+            self.draft_model.position = draft_position_saved
             self.performance_tracker.record_draft_forward(k)
 
             n_accepted, next_token = self.verifier.verify(
