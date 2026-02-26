@@ -58,24 +58,26 @@ class ParallelVerifier:
         next_token = None
 
         for i in range(k):
-
+            T = max(self.temperature, 1e-5)
             t_logits_i = target_logits[:, i, :]
             d_logits_i = draft_logits[:, i, :]
 
-            t_probs = F.softmax(t_logits_i / max(self.temperature, 1e-5), dim=-1)
-            d_probs = F.softmax(d_logits_i / max(self.temperature, 1e-5), dim=-1)
+            t_probs = F.softmax(t_logits_i / T, dim=-1)
+            d_probs = F.softmax(d_logits_i / T, dim=-1)
+            
+            token_id = draft_tokens[0, i]
 
-            draft_token_id = draft_tokens[0, i]
+            log_p_target = torch.log(t_probs[0, token_id] + 1e-8)
+            log_p_draft  = torch.log(d_probs[0, token_id] + 1e-8)
 
-            p_target = t_probs[0, draft_token_id]
-            p_draft  = d_probs[0, draft_token_id]
+            log_ratio = log_p_target - log_p_draft
 
             acceptance_prob = torch.minimum(
-                torch.tensor(1.0, device=p_target.device),
-                p_target / (p_draft + 1e-8),
+                torch.tensor(1.0, device=log_ratio.device),
+                torch.exp(log_ratio),
             )
 
-            if torch.rand(1, device=p_target.device) < acceptance_prob:
+            if torch.rand(1, device=acceptance_prob.device) < acceptance_prob:
                 n_accepted += 1
             else:
                 next_token = self.rejection_sampler.handle(
@@ -89,9 +91,7 @@ class ParallelVerifier:
         # 3️⃣ If all accepted → sample bonus token
         # --------------------------------------------------
         if next_token is None:
-            bonus_logits = self.target_model.forward_next(
-    draft_tokens[:, -1:]
-)
+            bonus_logits = target_logits[:, k - 1, :]
             next_token = self.rejection_sampler.handle_bonus(
                 target_logits=bonus_logits,
                 temperature=self.temperature,
