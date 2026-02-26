@@ -36,7 +36,14 @@ class ParallelVerifier:
             use_cache=False,
             return_dict=True,
         )
-        draft_logits = draft_outputs.logits  
+        draft_logits = draft_outputs.logits 
+         
+        t_vocab = target_logits.shape[-1]
+        d_vocab = draft_logits.shape[-1]
+        if d_vocab < t_vocab:
+            draft_logits = F.pad(draft_logits, (0, t_vocab - d_vocab), value=float('-inf'))
+        elif t_vocab < d_vocab:
+            target_logits = F.pad(target_logits, (0, d_vocab - t_vocab), value=float('-inf'))
 
         n_accepted = 0
         next_token = None
