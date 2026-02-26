@@ -11,17 +11,17 @@ def main():
     # ----------------------------
     # Load models
     # ----------------------------
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
     draft_model = DraftModel(
         tokenizer=tokenizer,
-        model_name="meta-llama/Llama-3.2-1B-Instruct",
+        model_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",
         device=device,
         dtype=torch.float16,
     )
 
     target_model = TargetModel(
         tokenizer=tokenizer,
-        model_name="meta-llama/Llama-3.2-3B-Instruct",
+        model_name="meta-llama/Llama-2-7b-hf",
         device=device,
         dtype=torch.float16,
     )
@@ -32,9 +32,9 @@ def main():
     engine = SpeculativeEngine(
         draft_model=draft_model,
         target_model=target_model,
-        max_k=5,
-        entropy_bins=[2.0, 4.0, 6.0],
-        k_values=[5, 4, 3, 2],
+        max_k = 8,
+        entropy_bins = [3.0, 5.0, 7.0],
+        k_values     = [8,6, 4, 3],
         acceptance_alpha=0.1,
         acceptance_init=0.5,
     )
