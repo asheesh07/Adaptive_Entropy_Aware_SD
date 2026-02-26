@@ -11,19 +11,19 @@ def main():
     # ----------------------------
     # Load models
     # ----------------------------
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
     draft_model = DraftModel(
         tokenizer=tokenizer,
-        model_name="Qwen/Qwen2.5-0.5B-Instruct",
+        model_name="meta-llama/Llama-3.2-1B-Instruct",
         device=device,
-        dtype=torch.bfloat16,
+        dtype=torch.float16,
     )
 
     target_model = TargetModel(
         tokenizer=tokenizer,
-        model_name="Qwen/Qwen2.5-7B-Instruct",
+        model_name="meta-llama/Llama-3.2-3B-Instruct",
         device=device,
-        dtype=torch.bfloat16,
+        dtype=torch.float16,
     )
 
     # ----------------------------
@@ -32,9 +32,9 @@ def main():
     engine = SpeculativeEngine(
         draft_model=draft_model,
         target_model=target_model,
-        max_k=6,
-        entropy_bins=[2.5, 4.5, 7.0],
-        k_values=[6, 4, 3, 2],
+        max_k=5,
+        entropy_bins=[2.0, 4.0, 6.0],
+        k_values=[5, 4, 3, 2],
         acceptance_alpha=0.1,
         acceptance_init=0.5,
     )
