@@ -36,7 +36,7 @@ def main():
         entropy_bins = [3.5, 5.5],
         k_values = [6, 4, 3],
         acceptance_alpha=0.1,
-        acceptance_init=0.6,
+        acceptance_init=0.5,
     )
 
     # ----------------------------
