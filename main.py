@@ -16,14 +16,14 @@ def main():
         tokenizer=tokenizer,
         model_name="Qwen/Qwen2.5-0.5B-Instruct",
         device=device,
-        dtype=torch.float16,
+        dtype=torch.bfloat16,
     )
 
     target_model = TargetModel(
         tokenizer=tokenizer,
         model_name="Qwen/Qwen2.5-7B-Instruct",
         device=device,
-        dtype=torch.float16,
+        dtype=torch.bfloat16,
     )
 
     # ----------------------------
@@ -32,9 +32,9 @@ def main():
     engine = SpeculativeEngine(
         draft_model=draft_model,
         target_model=target_model,
-        max_k=5,
-        entropy_bins=[2.0, 4.0, 6.0],
-        k_values=[5, 4, 3, 2],
+        max_k=6,
+        entropy_bins=[2.5, 4.5, 7.0],
+        k_values=[6, 4, 3, 2],
         acceptance_alpha=0.1,
         acceptance_init=0.5,
     )
