@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-
+import copy
 class ParallelVerifier:
     def __init__(self, target_model, draft_model, rejection_sampler, temperature: float = 1.0):
         self.target_model = target_model
@@ -22,12 +22,10 @@ class ParallelVerifier:
         # This is O(k) not O(seq_len) — the key to fast verification
         target_out = self.target_model.model(
             input_ids=draft_tokens.to(self.target_model.device),
-            past_key_values=self.target_model.kv_cache,
+            past_key_values=copy.deepcopy(self.target_model.kv_cache),
             use_cache=True,
             return_dict=True,
-        )
-        target_logits = target_out.logits      # (1, k, vocab)
-        target_kv_full = target_out.past_key_values  # cache now at seq_len+k
+        )  # cache now at seq_len+k
 
         # ── Step 2: Draft — run ONLY k draft tokens using existing KV cache ──
         draft_out = self.draft_model.model(
