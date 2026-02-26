@@ -89,7 +89,9 @@ class ParallelVerifier:
         # 3️⃣ If all accepted → sample bonus token
         # --------------------------------------------------
         if next_token is None:
-            bonus_logits = target_logits[:, k - 1, :]
+            bonus_logits = self.target_model.forward_next(
+    draft_tokens[:, -1:]
+)
             next_token = self.rejection_sampler.handle_bonus(
                 target_logits=bonus_logits,
                 temperature=self.temperature,
