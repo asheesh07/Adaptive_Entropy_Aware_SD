@@ -32,9 +32,9 @@ def main():
     engine = SpeculativeEngine(
         draft_model=draft_model,
         target_model=target_model,
-        max_k = 8,
-        entropy_bins = [3.0, 5.0, 7.0],
-        k_values     = [8,6, 4, 3],
+        max_k = 6
+        entropy_bins = [3.5, 5.5],
+        k_values = [6, 4, 3],
         acceptance_alpha=0.1,
         acceptance_init=0.5,
     )
