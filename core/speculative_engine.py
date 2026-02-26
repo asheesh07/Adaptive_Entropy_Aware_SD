@@ -39,7 +39,7 @@ class SpeculativeEngine:
 
         self.threshold_adjuster = ThresholdAdjuster(entropy_bins)
         self.draft_generator = DraftGenerationLoop(self.draft_model)
-        self.verifier = ParallelVerifier(self.target_model)
+        self.verifier = ParallelVerifier(self.target_model,self.draft_model,self.rejection_sampler)
         self.rejection_sampler = RejectionSampler(
             target_model=self.target_model
         )
