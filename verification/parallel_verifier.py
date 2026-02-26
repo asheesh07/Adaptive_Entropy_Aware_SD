@@ -80,23 +80,22 @@ class ParallelVerifier:
                 temperature=self.temperature,
             )
 
-        # ── Step 5: Crop target KV cache to committed position ──
-        # target_kv_full is at seq_len+k
-        # we want seq_len+n_accepted+1
         committed_len = seq_len + n_accepted + 1
-        target_kv_full.crop(committed_len)
-        self.target_model.kv_cache = target_kv_full
-        self.target_model.position = committed_len
-
-        # ── Step 6: Update draft cache to committed position ──
-        # draft cache is at seq_len+k after Step 2
-        # crop to seq_len, then append committed_delta
-        self.draft_model.kv_cache.crop(seq_len)
-        self.draft_model.position = seq_len
-
         committed_delta = torch.cat(
             [draft_tokens[:, :n_accepted], next_token], dim=1
         )
+
+        target_delta = self.target_model.model(
+            input_ids=committed_delta.to(self.target_model.device),
+            past_key_values=self.target_model.kv_cache,
+            use_cache=True,
+            return_dict=True,
+        )
+        self.target_model.kv_cache = target_delta.past_key_values
+        self.target_model.position = committed_len
+
+        self.draft_model.kv_cache.crop(seq_len)
+        self.draft_model.position = seq_len
         draft_delta = self.draft_model.model(
             input_ids=committed_delta.to(self.draft_model.device),
             past_key_values=self.draft_model.kv_cache,
