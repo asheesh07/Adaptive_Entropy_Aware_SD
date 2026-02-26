@@ -25,7 +25,8 @@ class ParallelVerifier:
             past_key_values=copy.deepcopy(self.target_model.kv_cache),
             use_cache=True,
             return_dict=True,
-        )  # cache now at seq_len+k
+        )  
+        target_logits = target_out.logits 
 
         # ── Step 2: Draft — run ONLY k draft tokens using existing KV cache ──
         draft_out = self.draft_model.model(
