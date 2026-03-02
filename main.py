@@ -21,7 +21,7 @@ def main():
 
     target_model = TargetModel(
         tokenizer=tokenizer,
-        model_name="meta-llama/Llama-3.2-8B-Instruct",
+        model_name="meta-llama/Llama-3.1-8B-Instruct",
         device=device,
         dtype=torch.float16,
     )
