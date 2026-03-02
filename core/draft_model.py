@@ -30,8 +30,6 @@ class DraftModel:
             p.requires_grad = False
 
         self.device = device
-        self.dtype = dtype
-
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
@@ -40,7 +38,7 @@ class DraftModel:
         self.position = 0
 
     # --------------------------------------------------
-    # Initialize KV cache with full prefix
+    # Initialize KV cache
     # --------------------------------------------------
     @torch.no_grad()
     def init_kv_cache(self, input_ids: torch.Tensor):
@@ -61,15 +59,10 @@ class DraftModel:
         return outputs.logits[:, -1, :]
 
     # --------------------------------------------------
-    # Incremental forward (1 token at a time)
+    # Incremental forward
     # --------------------------------------------------
     @torch.no_grad()
     def forward_next(self, input_token: torch.Tensor):
-        if input_token.shape[-1] != 1:
-            raise RuntimeError(
-                f"forward_next expects exactly 1 token, got {input_token.shape}"
-            )
-
         input_token = input_token.to(self.device)
 
         outputs = self.model(
@@ -85,25 +78,33 @@ class DraftModel:
         return outputs.logits[:, -1, :]
 
     # --------------------------------------------------
-    # PROPER SAMPLING (MATCH TARGET SETTINGS)
+    # Stable Distribution Builder
     # --------------------------------------------------
-    def sample_token(self, logits: torch.Tensor):
+    def build_distribution(self, logits: torch.Tensor):
+        """
+        Returns:
+            probs: sampling distribution
+            entropy: entropy computed AFTER temperature scaling
+        """
 
-        logits = logits / max(self.temperature, 1e-5)
+        # Logit stabilization (important for fp16)
+        logits = logits - logits.max(dim=-1, keepdim=True).values
+
+        # Temperature scaling
+        logits = logits / max(self.temperature, 1e-6)
 
         probs = F.softmax(logits, dim=-1)
 
-        # Top-p (nucleus) sampling
+        # ----- Top-p (nucleus) -----
         if self.top_p < 1.0:
             sorted_probs, sorted_indices = torch.sort(probs, descending=True)
             cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
-            sorted_indices_to_remove = cumulative_probs > self.top_p
-            sorted_indices_to_remove = sorted_indices_to_remove.clone()
-            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
-            sorted_indices_to_remove[..., 0] = False
+            cutoff = cumulative_probs > self.top_p
+            cutoff[..., 1:] = cutoff[..., :-1].clone()
+            cutoff[..., 0] = False
 
-            sorted_probs[sorted_indices_to_remove] = 0.0
+            sorted_probs[cutoff] = 0.0
 
             probs = torch.zeros_like(probs).scatter_(
                 -1, sorted_indices, sorted_probs
@@ -111,19 +112,38 @@ class DraftModel:
 
             probs = probs / probs.sum(dim=-1, keepdim=True)
 
-        # Top-k sampling
+        # ----- Top-k -----
         if self.top_k > 0:
-            top_k_probs, top_k_indices = torch.topk(probs, self.top_k, dim=-1)
-            top_k_probs = top_k_probs / top_k_probs.sum(dim=-1, keepdim=True)
-            sampled_idx = torch.multinomial(top_k_probs, num_samples=1)
-            return top_k_indices.gather(-1, sampled_idx)
+            topk_probs, topk_indices = torch.topk(probs, self.top_k, dim=-1)
+            topk_probs = topk_probs / topk_probs.sum(dim=-1, keepdim=True)
 
+            new_probs = torch.zeros_like(probs)
+            new_probs.scatter_(-1, topk_indices, topk_probs)
+            probs = new_probs
+
+        # Entropy computed on final distribution
+        entropy = -(probs * torch.log(probs + 1e-9)).sum(dim=-1)
+
+        # Optional normalized entropy (recommended for adaptive SD)
+        vocab_size = probs.shape[-1]
+        entropy_norm = entropy / torch.log(
+            torch.tensor(vocab_size, device=probs.device)
+        )
+
+        return probs, entropy, entropy_norm
+
+    # --------------------------------------------------
+    # Sample token
+    # --------------------------------------------------
+    def sample_from_probs(self, probs: torch.Tensor):
         return torch.multinomial(probs, num_samples=1)
 
     # --------------------------------------------------
-    # Rollback KV cache after rejection
+    # Rollback KV cache safely
     # --------------------------------------------------
     def rollback_kv_cache(self, prefix_length: int):
+        if self.kv_cache is None:
+            return
         self.kv_cache.crop(prefix_length)
         self.position = prefix_length
 
