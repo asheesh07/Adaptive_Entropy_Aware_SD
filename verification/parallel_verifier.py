@@ -1,15 +1,13 @@
-# parallel_verifier.py — optimized incremental version
+# parallel_verifier.py — adapted to unified distribution API
 
 import torch
-import torch.nn.functional as F
 
 
 class ParallelVerifier:
-    def __init__(self, target_model, draft_model, rejection_sampler, temperature: float = 1.0):
+    def __init__(self, target_model, draft_model, rejection_sampler):
         self.target_model = target_model
         self.draft_model = draft_model
         self.rejection_sampler = rejection_sampler
-        self.temperature = temperature
 
     @torch.no_grad()
     def verify(self, input_ids: torch.Tensor, draft_tokens: torch.Tensor):
@@ -22,13 +20,12 @@ class ParallelVerifier:
         # --------------------------------------------------
         if k == 0:
             logits = self.target_model.forward_next(input_ids[:, -1:])
-            next_token = self.rejection_sampler.handle_bonus(
-                logits, self.temperature
-            )
+            probs, _, _ = self.target_model.build_distribution(logits)
+            next_token = self.target_model.sample_from_probs(probs)
             return 0, next_token
 
         # --------------------------------------------------
-        # 1️⃣ Forward ONLY draft tokens using cached prefix
+        # 1️⃣ Forward draft tokens in parallel
         # --------------------------------------------------
         target_outputs = self.target_model.model(
             input_ids=draft_tokens.to(self.target_model.device),
@@ -37,10 +34,9 @@ class ParallelVerifier:
             return_dict=True,
         )
 
-        target_logits = target_outputs.logits  # (1, k, vocab)
+        target_logits = target_outputs.logits
         updated_target_cache = target_outputs.past_key_values
 
-        # Draft logits (incremental, cached)
         draft_outputs = self.draft_model.model(
             input_ids=draft_tokens.to(self.draft_model.device),
             past_key_values=self.draft_model.kv_cache,
@@ -52,7 +48,7 @@ class ParallelVerifier:
         updated_draft_cache = draft_outputs.past_key_values
 
         # --------------------------------------------------
-        # 2️⃣ Acceptance Loop (no full recompute)
+        # 2️⃣ Acceptance Loop
         # --------------------------------------------------
         n_accepted = 0
         next_token = None
@@ -62,13 +58,14 @@ class ParallelVerifier:
             t_logits_i = target_logits[:, i, :]
             d_logits_i = draft_logits[:, i, :]
 
-            t_probs = F.softmax(t_logits_i / max(self.temperature, 1e-5), dim=-1)
-            d_probs = F.softmax(d_logits_i / max(self.temperature, 1e-5), dim=-1)
+            # Use unified distribution builder
+            t_probs, _, _ = self.target_model.build_distribution(t_logits_i)
+            d_probs, _, _ = self.draft_model.build_distribution(d_logits_i)
 
             draft_token_id = draft_tokens[0, i]
 
             p_target = t_probs[0, draft_token_id]
-            p_draft  = d_probs[0, draft_token_id]
+            p_draft = d_probs[0, draft_token_id]
 
             acceptance_prob = torch.minimum(
                 torch.tensor(1.0, device=p_target.device),
@@ -78,10 +75,10 @@ class ParallelVerifier:
             if torch.rand(1, device=p_target.device) < acceptance_prob:
                 n_accepted += 1
             else:
+                # rejection sampling correction
                 next_token = self.rejection_sampler.handle(
                     target_logits=t_logits_i,
                     draft_logits=d_logits_i,
-                    temperature=self.temperature,
                 )
                 break
 
@@ -90,16 +87,16 @@ class ParallelVerifier:
         # --------------------------------------------------
         if next_token is None:
             bonus_logits = target_logits[:, k - 1, :]
-            next_token = self.rejection_sampler.handle_bonus(
-                target_logits=bonus_logits,
-                temperature=self.temperature,
+            bonus_probs, _, _ = self.target_model.build_distribution(
+                bonus_logits
+            )
+            next_token = self.target_model.sample_from_probs(
+                bonus_probs
             )
 
         # --------------------------------------------------
-        # 4️⃣ Update KV cache WITHOUT recompute
+        # 4️⃣ Rollback to prefix + accepted
         # --------------------------------------------------
-
-        # Rollback to prefix + accepted tokens
         new_length = seq_len + n_accepted
 
         self.target_model.kv_cache = updated_target_cache
@@ -113,9 +110,9 @@ class ParallelVerifier:
         # --------------------------------------------------
         # 5️⃣ Append next_token incrementally
         # --------------------------------------------------
-
-        # Forward the sampled next token to extend cache properly
         self.target_model.forward_next(next_token)
-        self.draft_model.forward_next(next_token.to(self.draft_model.device))
+        self.draft_model.forward_next(
+            next_token.to(self.draft_model.device)
+        )
 
         return n_accepted, next_token
