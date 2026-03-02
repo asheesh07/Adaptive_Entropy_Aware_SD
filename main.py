@@ -15,6 +15,7 @@ def main():
     draft_model = DraftModel(
         tokenizer=tokenizer,
         model_name="meta-llama/Llama-3.2-1B-Instruct",
+        load_in_4bit=True,
         device=device,
         dtype=torch.float16,
     )
@@ -22,6 +23,7 @@ def main():
     target_model = TargetModel(
         tokenizer=tokenizer,
         model_name="meta-llama/Llama-3.1-8B-Instruct",
+        load_in_4bit=True,
         device=device,
         dtype=torch.float16,
     )
