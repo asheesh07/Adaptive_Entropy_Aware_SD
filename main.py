@@ -11,17 +11,17 @@ def main():
     # ----------------------------
     # Load models
     # ----------------------------
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.2-3B-Instruct")
     draft_model = DraftModel(
         tokenizer=tokenizer,
-        model_name="meta-llama/Llama-3.1-3B-Instruct",
+        model_name="meta-llama/Llama-3.2-1B-Instruct",
         device=device,
         dtype=torch.float16,
     )
 
     target_model = TargetModel(
         tokenizer=tokenizer,
-        model_name="meta-llama/Llama-3.1-8B-Instruct",
+        model_name="meta-llama/Llama-3.2-3B-Instruct",
         device=device,
         dtype=torch.float16,
     )
