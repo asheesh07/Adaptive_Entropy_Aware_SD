@@ -122,9 +122,8 @@ class SpeculativeEngine:
             # ------------------------------------------
             # 3️⃣ Draft generation
             # ------------------------------------------
-            draft_tokens = self.draft_generator.generate(
-                k, output_ids[:, -1:]
-            )
+            draft_tokens, draft_entropies, draft_probs = \
+                self.draft_generator.generate(k, output_ids[:, -1:])
 
             self.performance_tracker.record_draft_forward(k)
 
