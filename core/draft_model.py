@@ -11,9 +11,9 @@ class DraftModel:
         model_name: str,
         device="cuda",
         dtype: torch.dtype = torch.float16,
-        temperature: float = 0.6,
-        top_p: float = 0.8,
-        top_k: int = 0,
+        temperature: float = 0.5,
+        top_p: float = 0.7,
+        top_k: int = 40,
     ):
         self.tokenizer = tokenizer
 
