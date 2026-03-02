@@ -11,8 +11,8 @@ class TargetModel:
         model_name: str,
         device: str = "cpu",
         dtype: torch.dtype = torch.float16,
-        temperature: float = 0.8,
-        top_p: float = 0.9,
+        temperature: float = 0.6,
+        top_p: float = 0.8,
         top_k: int = 0,
     ):
         self.tokenizer = tokenizer
@@ -22,6 +22,7 @@ class TargetModel:
 
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
+            load_in_4bit=True,
             torch_dtype=dtype,
         ).to(device)
 
